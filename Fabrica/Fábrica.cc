@@ -10,8 +10,7 @@
 #define Partida_Limpieza          2  /* Evento Partida Limpieza                   */
 #define Partida_Lubricación       3  /* Evento Partida lubricación                      */
 #define Partida_Operador          4  /* Evento Fin Día            */
-#define Partida_Ensambladora_A    5 /* Evento Partida Ensambladora A*/
-#define Partida_Ensambladora_B    6 /*Evento Partida Ensambladora B*/
+#define Partida_Ensambladora	  5 /* Evento Partida Ensambladora A*/    
 
 
 //Definición de Listas 
@@ -22,7 +21,8 @@
 #define Cola_Ensambladora_B         5
 
 //Definición Listas Demoras 
-#define Demora_En_Cada_Cola           1 //Espera en cada cola para cada tipo de pieza
+#define Demora_Pieza_A     1 // Demora pieza A
+# define Demora_Pieza_B    2 // Demora pieza B
 
 // Definición Posiciones transfer
 #define Tiempo_Evento     1
@@ -31,7 +31,7 @@
 
 /* Declaración de variables  */
 bool falla, anomalia;
-float min_interarribos, max_interarribos, tiempo_refinacion, media_tiempo_servicio_lubricacion, porcentaje_habitual_fallas, min_tiempo_operador, max_tiempo_operador, media_tiempo_ensambladora, desv_estandar_ensambladora,porcentaje_anomalias;
+float min_interarribos, max_interarribos, tiempo_refinacion, media_tiempo_servicio_lubricacion, porcentaje_habitual_fallas, min_tiempo_operador, max_tiempo_operador, media_tiempo_ensambladora, desv_estandar_ensambladora,porcentaje_anomalias, probabilidad_pieza;
 int tipo_pieza, numero_dias;
 
 /* Rutinas */
@@ -66,7 +66,7 @@ int main()  /* Main function. */
 
 	clientes_act = 0;
 
-	while (sim_time <= numero_dias*86400)
+	while (sim_time <= numero_dias*1440)
 	{
 
 		/* Determinar pr�ximo Evento */
@@ -120,7 +120,22 @@ void inicializa(void)  /* Inicializar el Sistema */
 
 void Rutina_Arribo_Pieza()
 	{
-		int TipoPieza=transfer(Tipo_Pieza)
+		// Determinar primer arribo y cargar en lista de eventos
+		probabilidad_pieza=lcgrand(Arribo_Pieza)
+		if (probabilidad_pieza <= 0,5)
+			{
+				float tiempo = uniform(min_interarribos, max_interarribos, Arribo_Pieza);
+				transfer[Tiempo_Evento] = sim_time + tiempo;
+				transfer[Tipo_Evento] = Arribo_Pieza;
+				transfer[Tipo_Pieza]='A'
+			}
+		else
+		{
+			float tiempo = uniform(min_interarribos, max_interarribos, Arribo_Pieza)
+			transfer[Tiempo_Evento] = sim_time + tiempo;
+			transfer[Tipo_Evento]=Arribo_Pieza
+			transfer[Tipo_Pieza]='B'
+		}
 		// Ver si puede ingresar a la maquina de refinacion
 		if (list_size[Cola_Limpieza_Y_Refinación]==0)
 		{
@@ -133,9 +148,42 @@ void Rutina_Arribo_Pieza()
 			transfer[Tiempo_Evento] = sim_time;
 			list_file(LAST,Cola_Limpieza_Y_Refinación)
 		}
-		Generar_Partida_Limpieza(Tipo_Pieza)
-
+		// Generar Proximo arribo pieza
+		Generar_Arribo_Pieza(Tipo_Pieza)
+		  
 	}
+	void Rutina_Partida_Limpieza()
+		{
+			int TipoPieza=transfer(Tipo_Pieza)
+			if (TipoPieza=='A')
+				{
+					// Ver si está libre la máquina de lubricación
+					if (list_size[Cola_Lubricación]==0)
+						{
+							list_file(FIRST, Cola_Lubricación);
+							sampst(0,0, Demora_Pieza_A)
+						}
+					else
+					{
+						// Va a Cola_lubricación
+						list_file(LAST, Cola_Lubricación)
+					}
+				}
+			else
+			{
+				// ver si está libre el operador humano
+				if (list_size[Cola_Operador_humano]==0)
+				{
+					list_file(FIRST,Cola_Operador_humano)
+					sampst(0,0, Demora_Pieza_B)
+				}
+				else
+				{
+					// Va a Cola_Operador_Humano
+					list_file(LAST, Cola_Operador_humano)
+				}
+			}
+		}
 	void reporte(void)  /* Generar Reporte de la Simulaci�n */
 	{
 
