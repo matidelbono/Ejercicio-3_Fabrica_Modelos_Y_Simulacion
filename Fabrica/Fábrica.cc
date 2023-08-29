@@ -222,7 +222,7 @@ void Rutina_Partida_Operador()
 					list_file(LAST, Cola_Ensambladora_B);
 				}
 				// Ver si hay trabajo en cola
-				if (list_size[Cola_Operador_humano]==0)
+				if (list_size[Cola_Operador_humano] > 0)
 					{
 						list_remove(FIRST, Cola_Operador_humano);
 						sampst(sim_time - transfer[Tiempo_Evento], Demora_Pieza_B);
