@@ -31,7 +31,7 @@
 
 /* Declaración de variables  */
 bool falla, anomalia;
-int min_interarribos, max_interarribos, tiempo_refinacion, media_tiempo_servicio_lubricacion, porcentaje_habitual_fallas, min_tiempo_operador, max_tiempo_operador, media_tiempo_ensambladora, desv_estandar_ensambladora, porcentaje_anomalias, probabilidad_pieza, probabilidad_falla, cont_fallas,tipo_pieza, pieza_A = 1, Pieza_B = 2, numero_dias;
+int min_interarribos, max_interarribos, tiempo_refinacion, media_tiempo_servicio_lubricacion, porcentaje_habitual_fallas, min_tiempo_operador, max_tiempo_operador, media_tiempo_ensambladora, desv_estandar_ensambladora, porcentaje_anomalias, probabilidad_pieza, probabilidad_falla, probabilidad_anomalias, cont_fallas,cont_producto_terminado,cont_anomalias, tipo_pieza, pieza_A = 1, Pieza_B = 2, numero_dias;
 
 /* Rutinas */
 int main();
@@ -63,7 +63,7 @@ int main()  /* Main function. */
 
 	clientes_act = 0;
 
-	while (sim_time <= numero_dias*1440)
+	while (sim_time <= numero_dias*21600)
 	{
 
 		/* Determinar pr�ximo Evento */
@@ -113,10 +113,26 @@ void inicializa(void)  /* Inicializar el Sistema */
 	falla = false;
 	anomalia = false
 	cont_fallas = 0;
-
+}
 	void Rutina_Arribo_Pieza()
 	{
-		
+		// Generar el arribo de piezas
+		probabilidad_pieza = lcgrand(Arribo_Pieza)
+			if (probabilidad_pieza <= 0,5)
+			{
+				float tiempo = uniform(min_interarribos, max_interarribos, Arribo_Pieza);
+				transfer[Tiempo_Evento] = sim_time + tiempo;
+				transfer[Tipo_Pieza] = 1
+			}
+			else
+			{
+				float tiempo = uniform(min_interarribos, max_interarribos, Arribo_Pieza);
+				transfer[Tiempo_Evento] = sim_time + tiempo;
+				transfer[Tipo_Pieza] = 2
+			}
+		transfer[Tipo_Evento] = Arribo_Pieza;
+		list_file(INCREASING, LIST_EVENT);
+
 		// Ver si puede ingresar a la maquina de refinacion
 		if (list_size[Cola_Limpieza_Y_Refinación] == 0):
 		{
@@ -173,11 +189,11 @@ void Rutina_Partida_Limpieza()
 				}
 			}
 			// ver si hay trabajo en cola
-			if (list_size[Cola_Limpieza_Y_Refinación]> 0)
+			if (list_size[Cola_Limpieza_Y_Refinación]>0)
 				{
-					list_remove(FIRST, Cola_Limpieza_Y_Refinación)
-					sa
-					list_file(FIRST, TipoPieza);
+				list_remove(FIRST, Cola_Limpieza_Y_Refinación);
+				sampst (0,0, Demora_Pieza_A)
+				list_file(FIRST, TipoPieza);
 					Generar_Partida_Limpieza(Tipo_Pieza);
 				}
 	}
@@ -187,8 +203,8 @@ void Rutina_Partida_Lubricacion()
 			if (list_size[Cola_Ensambladora_A]==0)
 				{
 					list_file(FIRST, Cola_Ensambladora_A);
-					Generar_Partida_Lubricacion();
 					sampst(0, 0, Demora_Pieza_A);
+					Generar_Partida_Lubricacion();
 				}
 			else
 				{
@@ -230,144 +246,148 @@ void Rutina_Partida_Operador()
 						list_file(Cola_Operador_humano);
 						Generar_Partida_Operador();
 					}
+	}
+void Rutina_Partida_Ensambladora()
+	{
+		probabilidad_anomalias = lcgrand(Partida_Ensambladora);
+		int TipoPieza = transfer[Tipo_Pieza];
+		if (probabilidad_anomalias<= 0.05)
+			{
+				
+				// Ver si está libre la máquina de limpieza
+				if (list_size[Cola_Limpieza_Y_Refinación]==0)
+					{
+							if (TipoPieza==1)
+								{
+									list_file(FIRST, Tipo_Pieza);
+									sampst(0, 0, Demora_Pieza_A);
+									Generar_Partida_Limpieza()
+									// Ver si está libre la máquina de lubricación
+									if (list_size[Cola_Lubricación] == 0)
+										{
+											list_file(FIRST, Cola_Lubricación);
+											sampst(0, 0, Demora_Pieza_A)
+										}
+									else
+										{
+											// Va a Cola_lubricación
+											list_file(LAST, Cola_Lubricación)
+										}
+										
+								}
+						
+							else
+								{
+									list_file(FIRST, Tipo_Pieza);
+									sampst(0, 0, Demora_Pieza_B);
+									Generar_Partida_Limpieza()
+									// Ver Si está libre el operador
+									if (list_size[Cola_Operador_humano] == 0)
+										{
+											list_file(FIRST, Cola_Operador_humano);
+											// ver si la pieza tiene fallas
+											probabilidad_falla = lcgrand(Partida_Limpieza)
+												if (probabilidad_falla <= 0,05)
+												{
+													cont_fallas++;
+												}
+												sampst(0, 0, Demora_Pieza_B);
+										}
+									else
+										{
+											// Va a Cola_Operador_Humano
+											list_file(LAST, Cola_Operador_humano)
+										}
+								}
+					}
+					else
+						{
+							// Va a Cola_limpieza
+							list_file(LAST, Cola_Limpieza_Y_Refinación)
+						}
+
 			}
+			else
+			{
+				cont_producto_terminado++;
+			}
+				
+		}
+		
 		void Generar_Arribo_Pieza()
 		{
-			// Determinar primer arribo y cargar en lista de eventos
 				probabilidad_pieza = lcgrand(Arribo_Pieza)
-				if (probabilidad_pieza <= 0 5)
+				if (probabilidad_pieza <= 0,5)
 				{
 					float tiempo = uniform(min_interarribos, max_interarribos, Arribo_Pieza);
 					transfer[Tiempo_Evento] = sim_time + tiempo;
-					
 					transfer[Tipo_Pieza] = 1
 				}
 				else
 				{
 					float tiempo = uniform(min_interarribos, max_interarribos, Arribo_Pieza);
 					transfer[Tiempo_Evento] = sim_time + tiempo;
-					transfer[Tipo_Evento] = Arribo_Pieza;
 					transfer[Tipo_Pieza] = 2
 				}
 				transfer[Tipo_Evento] = Arribo_Pieza;
 				list_file(INCREASING, LIST_EVENT);
 		}
-
-	void reporte(void)  /* Generar Reporte de la Simulaci�n */
-	{
-
-		/* Mostrar Par�metros de Entrada */
-
-		/* -------- Por pantalla -------- */
-
-		printf("Sistema M/M/1 - Simulaci�n con Simlib \n\n");
-		printf("Media de Interarribos          : %8.3f minutos\n", media_interarribos);
-		printf("Media de Servicios             : %8.3f minutos\n", media_servicio);
-		printf("Cantidad de Clientes Demorados : %i \n\n", num_clientes);
-
-		/* Calcular los Estad�sticos */
-
-		/* Estad�sticos Escalaras - Sampst */
-		sampst(0.0, -Demora_cola);
-		printf("\nDemora en Cola                 : %f \n ", transfer[1]);
-
-
-		/* Estad�sticos Temporales - Timest y Filest */
-
-		filest(Cola);
-		printf("\nN�mero Promedio en Cola        : %f \n ", transfer[1]);
-		filest(Servidor);
-		printf("\nUtilizaci�n Servidor           : %f \n ", transfer[1]);
-		printf("\nTiempo Final de Simulation     : %10.3f minutes\n", sim_time);
-
-
-		/* Estad�sticos Temporales - Timest y Filest */
-
-		filest(Cola);
-		printf("\nN�mero Promedio en Cola        : %f \n ", transfer[1]);
-		filest(Servidor);
-		printf("\nUtilizaci�n Servidor           : %f \n ", transfer[1]);
-		printf("\nSimulation end time            : %10.3f minutes\n", sim_time);
-
-
-	}
-
-	void Rutina_Arribo_Cliente(void)
-	{
-		/* Determinar pr�ximo arribo y cargar en Lista de Eventos */
-		tipo_cliente = transfer[3]
-
-			if (tipo_cliente == cliente_solo_caja)
+		void Generar_Partida_Limpieza(int TipoPieza)
 			{
-				transfer[1] = sim_time + expon(media_interarribos_solo_caja, 4)
-					transfer[2] = Arribo_Cliente;
-				transfer[3] = cliente_solo_caja;
-				list_file(INCREASING, LIST_EVENT);
-			}
-			else
-			{
-				probabilidad_cliente = lcgrand(Arribo_Cliente);
-				if (probabilidad_cliente <= 0, 6)
-				{
-					transfer[1] = sim_time + expon(media_interarribos_primera_vez, 2)
-						transfer[3] = cliente_nuevo //Cliente Primera Vez
-				}
-
+				if (TipoPieza==1)
+					{
+						transfer[Tipo_Pieza]='A'
+					}
 				else
 				{
-					transfer[1] = sim_time + expon(media_interarribos_viejo, 3)
-						transfer[3] = cliente_viejo //Cliente Viejo
+					transfer[Tipo_Pieza]='B'
 				}
-				tranfer[2] = Arribo_Cliente;
-				list_file(INCREASING, LIST_EVENT);
+				transfer[Tiempo_Evento] = 2.8
+				transfer[Tipo_Evento] = Partida_Limpieza;
+				list_file(INCREASING, LIST_EVENT)
 			}
-
-		/////Control visto en clase 12/06/2023
-
-			/* Chequear si el Servidor est� desocupado */
-
-		if (list_size[Servidor] == 0)
-		{
-
-			++clientes_act;
-
-			/* Si est� desocupado ocuparlo y generar la partida */
-
-			list_file(FIRST, Servidor);
-			sampst(0.0, Demora_cola);
-
-			/* Programar el evento partida */
-			transfer[1] = sim_time + expon(media_servicio, Partida);
-			transfer[2] = Partida;
-			list_file(INCREASING, LIST_EVENT);
-
-		}
-
-		else
-		{
-
-			/* Si el Servidor est� ocupado poner el Trabajo en Cola
-			guardo en el transfer [1] - cuando se coloco el evento en la cola
-			*/
-
-			transfer[1] = sim_time;
-			list_file(LAST, Cola);
-		}
-	}
-
-	void Rutina_Partida_Srv_Att_Cli(void)
+			
+		void Generar_Partida_Lubricacion()
+			{
+				transfer[Tiempo_Evento] = expon(media_tiempo_servicio_lubricacion, Partida_Lubricación);
+				transfer[Tipo_Evento] = Partida_Lubricación;
+				transfer[Tipo_Pieza] = 1;
+				list_file(INCREASING, LIST_EVENT)
+			}
+		void Generar_Partida_Operador()
+			{
+				transfer[Tiempo_Evento] = uniform(min_tiempo_operador, max_tiempo_operador, Partida_Operador)
+				transfer[Tipo_Evento] = Partida_Operador;
+				transfer[Tipo_Pieza] = 2;
+				list_file(INCREASING, LIST_EVENT)
+			}
+	void estadisticos(void)  /* Generar Reporte de la Simulaci�n */
 	{
-	}
+		// Utilización de todos los "procesadores" del sistema
 
-	void Partida_Caja(void)
-	{
-	}
 
-	void Inicio_Jornada(void)
-	{
-	}
+		printf("comienza el reporte.....\n\n");
 
-	void Fin_Jornada(void)
-	{
-	}
-}
+		// Demora en cada una de las colas de la pieza A
+		filest(Cola_Limpieza_Y_Refinación, Cola_Lubricación, Cola_Ensambladora_A);
+		sampst(0, 0, -Demora_Pieza_A);
+		printf("\nDemora Pieza A: %f \n ", transfer[1]);
+
+		// Demora en cada una de las colas de la pieza B
+		filest(Cola_Limpieza_Y_Refinación, Cola_Operador_humano, Cola_Ensambladora_B);
+		sampst(0, 0 - Demora_Pieza_B);
+		printf("\nDemora Pieza B: %f \n ", transfer[1]);
+
+		// Cantidad de piezas B rechazadas
+		filest(Cola_Operador_humano);
+		printf("\nCantidad Piezas B rechazadas: %f \n ", transfer[1]);
+
+		// Cantidad de productos terminados
+		filest(Cola_Ensambladora_A, Cola_Ensambladora_B);
+		printf("\nCantidad Productos terminados: %f \n ", transfer[1]);
+
+		// Cantidad de productos con anomalias
+		filest(Cola_Ensambladora_A, Cola_Ensambladora_B);
+		printf("\nCantidad Productos terminados: %f \n ", transfer[1]);
+
+
